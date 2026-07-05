@@ -4,6 +4,8 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Calendar, User, Award, Mail, FileText, BookOpen, GraduationCap, Phone, MapPin } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { useAuth } from '@/app/contexts/AuthContext'; // ✅ ADD THIS
+import { createAuditLog } from '@/lib/audit'; // ✅ ADD THIS
 
 interface Application {
   id: string;
@@ -26,6 +28,7 @@ interface Application {
 export default function ApplicationDetailsPage() {
   const params = useParams();
   const router = useRouter();
+  const { user } = useAuth(); // ✅ ADD THIS
   const applicationId = params.id as string;
 
   const [application, setApplication] = useState<Application | null>(null);
@@ -391,6 +394,20 @@ export default function ApplicationDetailsPage() {
                         });
 
                         if (response.ok) {
+                          // ✅ AUDIT LOG: Application Approved
+                          await createAuditLog({
+                            adminId: user?.id || '',
+                            adminName: user?.name || 'Unknown',
+                            adminEmail: user?.email || '',
+                            adminRole: user?.role || 'reviewer',
+                            action: 'APPROVE',
+                            entityType: 'APPLICATION',
+                            entityId: parseInt(application.id),
+                            entityName: `Application - ${application.application_data?.student_name || 'Unknown'}`,
+                            changes: `Approved application for ${application.application_data?.student_name || 'Unknown'} (${application.scholarship?.title || 'Unknown'})`,
+                            userAgent: navigator.userAgent
+                          });
+
                           setApplication(prev => prev ? { ...prev, status: 'approved' } : null);
                           toast.success('Application approved', {
                             duration: 3000,
@@ -437,6 +454,20 @@ export default function ApplicationDetailsPage() {
                         });
 
                         if (response.ok) {
+                          // ✅ AUDIT LOG: Application Rejected
+                          await createAuditLog({
+                            adminId: user?.id || '',
+                            adminName: user?.name || 'Unknown',
+                            adminEmail: user?.email || '',
+                            adminRole: user?.role || 'reviewer',
+                            action: 'REJECT',
+                            entityType: 'APPLICATION',
+                            entityId: parseInt(application.id),
+                            entityName: `Application - ${application.application_data?.student_name || 'Unknown'}`,
+                            changes: `Rejected application for ${application.application_data?.student_name || 'Unknown'} (${application.scholarship?.title || 'Unknown'})`,
+                            userAgent: navigator.userAgent
+                          });
+
                           setApplication(prev => prev ? { ...prev, status: 'rejected' } : null);
                           toast.success('Application rejected', {
                             duration: 3000,

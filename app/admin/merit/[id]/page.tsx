@@ -17,6 +17,10 @@ import {
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { createClient } from '@supabase/supabase-js';
+// import toast, { Toaster } from 'react-hot-toast';
+// import { createClient } from '@supabase/supabase-js';
+import { useAuth } from '@/app/contexts/AuthContext';
+import { createAuditLog } from '@/lib/audit';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -47,6 +51,8 @@ export default function MeritListDetailPage() {
   const params = useParams();
   const router = useRouter();
   const scholarshipId = params.id as string;
+    const { user } = useAuth();
+
 
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
@@ -137,6 +143,21 @@ export default function MeritListDetailPage() {
 
       fetchData();
 
+      
+      // ✅ AUDIT LOG: Merit List Generated
+      await createAuditLog({
+        adminId: user?.id || '',
+        adminName: user?.name || 'Unknown',
+        adminEmail: user?.email || '',
+        adminRole: user?.role || 'reviewer',
+        action: 'GENERATE',
+        entityType: 'MERIT_LIST',
+        entityId: parseInt(scholarshipId),
+        entityName: `Merit List - ${scholarship?.title || 'Unknown'}`,
+        changes: `Generated merit list for ${scholarship?.title || 'Unknown'}`,
+        userAgent: navigator.userAgent
+      });
+
     } catch (err: any) {
       toast.error(`Failed: ${err.message}`, {
         duration: 3000,
@@ -222,6 +243,20 @@ export default function MeritListDetailPage() {
       });
 
       fetchData();
+
+            // ✅ AUDIT LOG: Merit List Regenerated
+      await createAuditLog({
+        adminId: user?.id || '',
+        adminName: user?.name || 'Unknown',
+        adminEmail: user?.email || '',
+        adminRole: user?.role || 'reviewer',
+        action: 'REGENERATE',
+        entityType: 'MERIT_LIST',
+        entityId: parseInt(scholarshipId),
+        entityName: `Merit List - ${scholarship?.title || 'Unknown'}`,
+        changes: `Regenerated merit list for ${scholarship?.title || 'Unknown'}`,
+        userAgent: navigator.userAgent
+      });
 
     } catch (err: any) {
       toast.dismiss();

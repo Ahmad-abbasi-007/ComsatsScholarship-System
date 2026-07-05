@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   Download, 
   Server,
@@ -12,10 +13,13 @@ import {
   EyeOff,
   Megaphone,
   Send,
-  FileText
+  FileText,
+  Shield
 } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import toast, { Toaster } from 'react-hot-toast';
+import { useAuth } from '@/app/contexts/AuthContext';
+import Link from 'next/link';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -23,22 +27,20 @@ const supabase = createClient(
 );
 
 export default function AdminSettingsPage() {
+  const router = useRouter();
   const [exporting, setExporting] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [changingPassword, setChangingPassword] = useState(false);
   const [sendingAnnouncement, setSendingAnnouncement] = useState(false);
   
-  // Password change state
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   
-  // Announcement State
   const [announcementTitle, setAnnouncementTitle] = useState('');
   const [announcementMessage, setAnnouncementMessage] = useState('');
   
-  // System Info State
   const [systemInfo, setSystemInfo] = useState({
     totalStudents: 0,
     version: '2.0.0',
@@ -46,6 +48,41 @@ export default function AdminSettingsPage() {
     nodeVersion: '18.17.0',
     database: 'Supabase PostgreSQL'
   });
+  
+  const { user: admin } = useAuth();
+
+  // ✅ Check if admin exists
+  if (!admin) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-4xl mx-auto text-center py-12">
+          <p className="text-red-600">Please login first</p>
+        </div>
+      </div>
+    );
+  }
+
+  // ✅ Safe check for super admin
+  const isSuperAdmin = admin.role === 'super_admin' || admin.email === 'admin@comsats.edu.pk';
+
+  // ✅ Only Super Admin can access Settings
+  if (!isSuperAdmin) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-4xl mx-auto text-center py-12">
+          <Shield className="w-12 h-12 text-red-400 mx-auto mb-3" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600">Only Super Admin can access Settings.</p>
+          <button
+            onClick={() => router.push('/admin/dashboard')}
+            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   useEffect(() => {
     fetchSystemInfo();
@@ -107,7 +144,16 @@ export default function AdminSettingsPage() {
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    const adminData = localStorage.getItem('admin');
+    const adminObj = adminData ? JSON.parse(adminData) : null;
+    const adminId = adminObj?.id || admin?.id;
+
+    if (!adminId) {
+      toast.error('Admin not found. Please login again.');
+      return;
+    }
+
     if (!currentPassword || !newPassword || !confirmPassword) {
       toast.error('Please fill all password fields');
       return;
@@ -117,26 +163,46 @@ export default function AdminSettingsPage() {
       toast.error('New passwords do not match');
       return;
     }
+
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
     
-    if (newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
+    if (!passwordRegex.test(newPassword)) {
+      toast.error('Password must be at least 8 characters, contain uppercase, lowercase, number, and special character');
       return;
     }
 
     setChangingPassword(true);
-    
-    // Simulate password change
-    setTimeout(() => {
-      toast.success('Password changed successfully', {
-        duration: 3000,
-        position: 'top-center',
-        style: { background: '#dcfce7', color: '#166534', borderRadius: '8px', padding: '10px 16px' },
+
+    try {
+      const response = await fetch('/api/admin/profile/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          adminId: adminId,
+          currentPassword: currentPassword,
+          newPassword: newPassword
+        })
       });
-      setCurrentPassword('');
-      setNewPassword('');
-      setConfirmPassword('');
+
+      const data = await response.json();
+
+      if (response.ok) {
+        toast.success('Password changed successfully!', {
+          duration: 3000,
+          position: 'top-center',
+          style: { background: '#dcfce7', color: '#166534', borderRadius: '8px', padding: '10px 16px' },
+        });
+        setCurrentPassword('');
+        setNewPassword('');
+        setConfirmPassword('');
+      } else {
+        toast.error(data.error || 'Failed to change password');
+      }
+    } catch (error) {
+      toast.error('Failed to change password');
+    } finally {
       setChangingPassword(false);
-    }, 1000);
+    }
   };
 
   const sendAnnouncement = async () => {
@@ -218,6 +284,22 @@ export default function AdminSettingsPage() {
 
         <div className="space-y-6">
           
+          {/* User Profile Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 bg-blue-600 rounded-full flex items-center justify-center text-white text-xl font-bold">
+                {admin?.name?.charAt(0) || 'A'}
+              </div>
+              <div>
+                <p className="text-lg font-semibold text-gray-900">{admin?.name}</p>
+                <p className="text-sm text-gray-600">{admin?.email}</p>
+                <span className="mt-1 inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-700">
+                  {admin?.role || 'admin'}
+                </span>
+              </div>
+            </div>
+          </div>
+
           {/* Change Password Card */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center gap-2 mb-6">
@@ -248,7 +330,7 @@ export default function AdminSettingsPage() {
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="w-full border border-gray-300 rounded-lg px-4 py-2"
-                  placeholder="Enter new password (min 6 characters)"
+                  placeholder="Enter new password (min 8 characters)"
                 />
               </div>
 
@@ -295,6 +377,23 @@ export default function AdminSettingsPage() {
             </form>
           </div>
 
+          {/* Admin Management - Super Admin Only */}
+          <div className="bg-white rounded-xl shadow-sm border border-purple-200 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Shield className="w-5 h-5 text-purple-600" />
+              <h2 className="text-lg font-semibold text-gray-900">Admin Management</h2>
+              <span className="text-xs bg-purple-100 text-purple-700 px-2 py-0.5 rounded-full">Super Admin Only</span>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">Manage other administrators and their roles</p>
+            <Link
+              href="/admin/admins"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+            >
+              <Users size={18} />
+              Manage Admins
+            </Link>
+          </div>
+
           {/* Export & Reports Card */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center gap-2 mb-4">
@@ -323,67 +422,6 @@ export default function AdminSettingsPage() {
                   <span className="text-sm font-medium text-purple-700">Generate Reports</span>
                 </div>
               </button>
-            </div>
-          </div>
-
-          {/* Send Announcement Card */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-            <div className="flex items-center gap-2 mb-4">
-              <Megaphone className="w-5 h-5 text-orange-600" />
-              <h2 className="text-lg font-semibold text-gray-900">Send Announcement</h2>
-              <span className="text-xs bg-orange-100 text-orange-700 px-2 py-0.5 rounded-full">To All Students</span>
-            </div>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Announcement Title
-                </label>
-                <input
-                  type="text"
-                  value={announcementTitle}
-                  onChange={(e) => setAnnouncementTitle(e.target.value)}
-                  placeholder="e.g., Scholarship Deadline Extended"
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Announcement Message
-                </label>
-                <textarea
-                  value={announcementMessage}
-                  onChange={(e) => setAnnouncementMessage(e.target.value)}
-                  rows={4}
-                  placeholder="Enter your announcement message here..."
-                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none"
-                />
-              </div>
-
-              <div className="flex items-center justify-between pt-2">
-                <div className="flex items-center gap-2 text-xs text-gray-500">
-                  <Users size={14} />
-                  <span>Will be sent to all {systemInfo.totalStudents} students</span>
-                </div>
-                <button
-                  onClick={sendAnnouncement}
-                  disabled={sendingAnnouncement}
-                  className="bg-orange-600 text-white px-5 py-2 rounded-lg hover:bg-orange-700 transition-colors flex items-center gap-2 disabled:opacity-50"
-                >
-                  {sendingAnnouncement ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                      Sending...
-                    </>
-                  ) : (
-                    <>
-                      <Send size={16} />
-                      Send Announcement
-                    </>
-                  )}
-                </button>
-              </div>
             </div>
           </div>
 

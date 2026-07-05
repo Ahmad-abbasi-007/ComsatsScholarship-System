@@ -2,11 +2,14 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 
 interface User {
+  id?: string;
   name: string;
   regno: string;
   token?: string;
   email?: string; 
-  type: 'student' | 'admin'; 
+  type: 'student' | 'admin';
+  role?: 'super_admin' | 'admin' | 'reviewer' | 'viewer';
+  is_active?: boolean;
 }
 
 interface AuthContextType {
@@ -16,6 +19,8 @@ interface AuthContextType {
   loading: boolean;
   isStudent: () => boolean;
   isAdmin: () => boolean;
+  isSuperAdmin: () => boolean;
+  hasPermission: (requiredRole: string[]) => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -32,20 +37,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return !!localStorage.getItem('adminToken');
   };
 
+  const isSuperAdmin = () => {
+    const adminData = localStorage.getItem('admin');
+    if (adminData) {
+      const admin = JSON.parse(adminData);
+      return admin.role === 'super_admin';
+    }
+    return false;
+  };
+
+  const hasPermission = (requiredRoles: string[]) => {
+    if (!user) return false;
+    if (user.type !== 'admin') return false;
+    return requiredRoles.includes(user.role || '');
+  };
+
   useEffect(() => {
     const checkAuth = () => {
       const studentAuth = isStudent();
       const adminAuth = isAdmin();
       
-      //-------------------------This is for  If both exist, prefer the current user type---------------------------
       if (studentAuth && adminAuth) {
         if (user?.type === 'admin') {
           const admin = JSON.parse(localStorage.getItem('admin')!);
           setUser({
+            id: admin.id || 'admin',
             name: admin.name || 'Administrator',
+            email: admin.email || '',
             regno: 'admin',
             token: localStorage.getItem('adminToken')!,
-            type: 'admin'
+            type: 'admin',
+            role: admin.role || 'admin',
+            is_active: admin.is_active !== undefined ? admin.is_active : true
           });
         } else {
           setUser({
@@ -56,7 +79,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           });
         }
       }
-      //--------------------------This is for Only student authenticated------------------------------------------
       else if (studentAuth) {
         setUser({
           name: localStorage.getItem('studentName')!,
@@ -65,17 +87,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           type: 'student'
         });
       }
-      //-------------------------This is for  Only admin authenticated---------------------------------
       else if (adminAuth) {
         const admin = JSON.parse(localStorage.getItem('admin')!);
         setUser({
+          id: admin.id || 'admin',
           name: admin.name || 'Administrator',
+          email: admin.email || '',
           regno: 'admin',
           token: localStorage.getItem('adminToken')!,
-          type: 'admin'
+          type: 'admin',
+          role: admin.role || 'admin',
+          is_active: admin.is_active !== undefined ? admin.is_active : true
         });
       }
-      //----------------------------------This is for  No authentication---------------------------------------
       else {
         setUser(null);
       }
@@ -87,23 +111,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = (userData: User) => {
-    if (userData.regno === 'admin') {
-  //-----------------------------------This is for  Admin login - DON'T clear student data---------------------------------------
+    if (userData.regno === 'admin' || userData.type === 'admin') {
       localStorage.setItem('adminToken', userData.token || 'admin-token');
-      localStorage.setItem('admin', JSON.stringify({ name: userData.name }));
+      localStorage.setItem('admin', JSON.stringify({ 
+        id: userData.id,
+        name: userData.name,
+        email: userData.email,
+        role: userData.role || 'admin',
+        is_active: userData.is_active !== undefined ? userData.is_active : true
+      }));
     } else {
-  //----------------------------------This is for  Student login - DON'T clear admin data-------------------------------------
       localStorage.setItem('studentToken', userData.token || 'student-token');
       localStorage.setItem('studentName', userData.name);
       localStorage.setItem('studentRegno', userData.regno);
       localStorage.setItem('studentEmail', userData.email || '');
-
     }
     setUser({ ...userData, type: userData.regno === 'admin' ? 'admin' : 'student' });
   };
 
   const logout = () => {
-    //--------------------------------------This is for  Clear everything--------------------------------------------
     localStorage.removeItem('studentToken');
     localStorage.removeItem('studentName');
     localStorage.removeItem('studentRegno');
@@ -122,7 +148,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout, 
       loading,
       isStudent, 
-      isAdmin 
+      isAdmin,
+      isSuperAdmin,
+      hasPermission
     }}>
       {children}
     </AuthContext.Provider>

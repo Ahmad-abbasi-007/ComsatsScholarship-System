@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { supabase } from '@/lib/supabaseClient'
+import bcrypt from 'bcryptjs'
 
 export async function POST(request: Request) {
   try {
@@ -7,48 +8,64 @@ export async function POST(request: Request) {
 
     console.log('🔐 Login attempt:', { email })
 
-    //------------------------------This is for TEMPORARY: Hardcoded admin for testing----------------------------------------
-    if (email === 'admin@comsats.edu.pk' && password === 'admin123') {
-      return NextResponse.json({
-        message: 'Admin login successful',
-        admin: {
-          id: '97bca663-9121-48c4-82c7-b76a03c25ec6',  // ✅ FIXED: Use real UUID
-          email: 'admin@comsats.edu.pk',
-          full_name: 'System Administrator',
-          role: 'super_admin',
-          is_active: true,
-          created_at: new Date().toISOString()
-        },
-        token: 'admin-temp-token-123'
-      })
-    }
-
-    // If using database (comment out the above and uncomment below)
-    /*
+    // Check database for admin
     const { data: admin, error } = await supabase
       .from('admins')
       .select('*')
       .eq('email', email.toLowerCase())
-      .eq('is_active', true)
       .single()
 
     if (error || !admin) {
-      return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 })
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
+        { status: 401 }
+      )
     }
 
-    // For now, accept any password for testing
-    const { password_hash, ...adminData } = admin
-    return NextResponse.json({
-      message: 'Admin login successful',
-      admin: adminData,
-      token: `admin-${admin.id}`
-    })
-    */
+    // Check if admin is active
+    if (!admin.is_active) {
+      return NextResponse.json(
+        { error: 'Account is deactivated. Contact super admin.' },
+        { status: 403 }
+      )
+    }
 
-    return NextResponse.json(
-      { error: 'Invalid admin credentials' },
-      { status: 401 }
-    )
+    // ✅ Verify password using bcrypt
+    const isPasswordValid = await bcrypt.compare(password, admin.password_hash)
+    if (!isPasswordValid) {
+      return NextResponse.json(
+        { error: 'Invalid credentials' },
+        { status: 401 }
+      )
+    }
+
+    // Log the login
+    await supabase
+      .from('audit_logs')
+      .insert({
+        admin_id: admin.id,
+        admin_email: admin.email,
+        action: 'login',
+        entity_type: 'admin',
+        ip_address: request.headers.get('x-forwarded-for') || 'unknown'
+      })
+
+    // Return admin data without password
+    const { password_hash, ...adminData } = admin
+
+    return NextResponse.json({
+      success: true,
+      message: 'Admin login successful',
+      admin: {
+        id: adminData.id,
+        email: adminData.email,
+        name: adminData.full_name || adminData.name,
+        role: adminData.role || 'admin',
+        is_active: adminData.is_active,
+        created_at: adminData.created_at
+      },
+      token: `admin-${adminData.id}`
+    })
 
   } catch (error) {
     console.error('Login error:', error)

@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Plus, Trash2, Layers, GripVertical } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { useAuth } from '@/app/contexts/AuthContext'; // ✅ ADD THIS
+import { createAuditLog } from '@/lib/audit'; // ✅ ADD THIS
 
 type CustomField = {
   type: string;
@@ -26,10 +28,11 @@ type Tier = {
   max_score: number;
   award_description: string;
   award_amount: string;
-  award_amount_numeric?: number; // ADDED
+  award_amount_numeric?: number;
 };
 
 export default function CreateScholarshipPage() {
+  const { user } = useAuth(); // ✅ ADD THIS
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -43,7 +46,6 @@ export default function CreateScholarshipPage() {
     number_of_awards: 0
   });
 
-  // ADDED: Budget state
   const [budgetData, setBudgetData] = useState({
     award_amount: '',
   });
@@ -175,7 +177,7 @@ export default function CreateScholarshipPage() {
       max_score: 100,
       award_description: '',
       award_amount: '',
-      award_amount_numeric: 0 // ADDED
+      award_amount_numeric: 0
     }]);
   };
 
@@ -189,7 +191,6 @@ export default function CreateScholarshipPage() {
     setTiers(prev => prev.filter((_, i) => i !== index));
   };
 
-  // Calculate total budget
   const calculateTotalBudget = (): number => {
     if (scholarshipMode === 'single') {
       const numAwards = parseInt(formData.number_of_awards.toString()) || 0;
@@ -217,14 +218,12 @@ export default function CreateScholarshipPage() {
       return;
     }
 
-    // Single mode: Award amount required
     if (scholarshipMode === 'single' && (!budgetData.award_amount || parseInt(budgetData.award_amount) <= 0)) {
       toast.error('Award amount per student is required');
       setLoading(false);
       return;
     }
 
-    // Tiered mode: Each tier must have numeric amount
     if (scholarshipMode === 'tiered') {
       if (tiers.length === 0) {
         toast.error('Please add at least one tier');
@@ -276,7 +275,7 @@ export default function CreateScholarshipPage() {
       tiers: scholarshipMode === 'tiered' ? tiers : [],
       budget_allocated: totalBudget,
       award_amount: scholarshipMode === 'single' ? parseInt(budgetData.award_amount) : 0,
-      budget_status: 'pending' // ADDED
+      budget_status: 'pending'
     };
 
     try {
@@ -291,6 +290,20 @@ export default function CreateScholarshipPage() {
       if (!response.ok) {
         throw new Error(data.error || 'Failed to create scholarship');
       }
+
+      // ✅ AUDIT LOG: Scholarship Created
+      await createAuditLog({
+        adminId: user?.id || '',
+        adminName: user?.name || 'Unknown',
+        adminEmail: user?.email || '',
+        adminRole: user?.role || 'reviewer',
+        action: 'CREATE',
+        entityType: 'SCHOLARSHIP',
+        entityId: data.id,
+        entityName: formData.title,
+        changes: `Created scholarship: ${formData.title} (${scholarshipMode} mode, Budget: Rs. ${totalBudget.toLocaleString()})`,
+        userAgent: navigator.userAgent
+      });
 
       toast.success(`${formData.title} created successfully!`);
       setTimeout(() => router.push('/admin/scholarships'), 1500);
@@ -447,7 +460,6 @@ export default function CreateScholarshipPage() {
                   <p className="text-sm text-gray-500 mt-1">Top N students will be selected</p>
                 </div>
 
-                {/* NEW: Award Amount per Student */}
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Award Amount per Student *</label>
                   <input
@@ -542,7 +554,6 @@ export default function CreateScholarshipPage() {
                               className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm"
                             />
                           </div>
-                          {/* NEW: Numeric Amount Field */}
                           <div>
                             <label className="block text-xs font-medium text-gray-700 mb-1">Amount (Numeric)</label>
                             <input

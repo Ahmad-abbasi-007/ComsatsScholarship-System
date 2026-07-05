@@ -39,25 +39,27 @@ export default function AdminLogin() {
         return;
       }
 
-      //-----------------------------This is for USE AUTH CONTEXT FOR LOGIN---------------------------------
-login({
-  name: data.admin?.name || 'Administrator',
-  regno: 'admin',
-  token: data.token,
-  type: 'admin' 
-});
+      // ✅ FIX: Pass ALL admin data including role and email
+      login({
+        id: data.admin?.id,
+        name: data.admin?.name || 'Administrator',
+        email: data.admin?.email,
+        regno: 'admin',
+        token: data.token,
+        type: 'admin',
+        role: data.admin?.role || 'admin',
+        is_active: data.admin?.is_active !== undefined ? data.admin.is_active : true
+      });
 
-      //---------------------------This is for STORE ADDITIONAL ADMIN DAT------------------------------------------
+      // Store additional admin data
       localStorage.setItem("adminToken", data.token);
       localStorage.setItem("admin", JSON.stringify(data.admin));
 
-      // ✅ FIX: Store admin ID separately with the CORRECT UUID from database
-if (data.admin?.id) {
-  localStorage.setItem("adminId", data.admin.id);
-} else {
-  // Fallback to your known UUID if API doesn't return id
-  localStorage.setItem("adminId", "97bca663-9121-48c4-82c7-b76a03c25ec6");
-}
+      if (data.admin?.id) {
+        localStorage.setItem("adminId", data.admin.id);
+      } else {
+        localStorage.setItem("adminId", "97bca663-9121-48c4-82c7-b76a03c25ec6");
+      }
       
       setError("");
       router.push("/admin/dashboard");
@@ -71,13 +73,11 @@ if (data.admin?.id) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 flex items-center justify-center px-4 py-8">
       <div className="w-full max-w-md">
-        {/*--------------------------------------------This is for  Header -----------------------------------------*/}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-white mb-2 mt-20">Admin Portal</h1>
           <p className="text-slate-400">COMSATS Scholarship System</p>
         </div>
 
-        {/*---------------------------------------This is for Login Card ----------------------------------------*/}
         <div className="bg-slate-800/50 backdrop-blur-lg border border-slate-700/50 rounded-xl shadow-2xl p-8">
           {error && (
             <div className="mb-6 p-4 bg-red-500/20 border border-red-400/30 rounded-lg text-red-200 text-sm">
@@ -152,7 +152,6 @@ if (data.admin?.id) {
             </button>
           </form>
 
-          {/*----------------------------------This is for Security Notice ---------------------------------------*/}
           <div className="mt-6 p-4 bg-slate-700/30 border border-slate-600/30 rounded-lg">
             <div className="flex items-start space-x-3">
               <svg className="w-5 h-5 text-indigo-400 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
@@ -168,7 +167,6 @@ if (data.admin?.id) {
           </div>
         </div>
 
-        {/*------------------------------------This is for Back Link ------------------------------------*/}
         <div className="text-center mt-6">
           <Link 
             href="/" 

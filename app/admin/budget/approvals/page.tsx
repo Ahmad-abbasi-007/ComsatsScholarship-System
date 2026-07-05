@@ -10,26 +10,48 @@ import {
   Users, 
   Award,
   RefreshCw,
-  Edit
+  Edit,
+  Shield
 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/app/contexts/AuthContext'
+import { hasAccess } from '@/lib/roleCheck'
 import toast, { Toaster } from 'react-hot-toast'
 
 export default function BudgetApprovalsPage() {
-  const [loading, setLoading] = useState(true)
+  const { user, loading } = useAuth()
+  const router = useRouter()
+  const [loadingData, setLoadingData] = useState(true)
   const [scholarships, setScholarships] = useState<any[]>([])
   const [filter, setFilter] = useState('all')
   const [selectedScholarship, setSelectedScholarship] = useState<any>(null)
   const [showModal, setShowModal] = useState(false)
   const [processingId, setProcessingId] = useState<string | null>(null)
 
+  const pathname = '/admin/budget/approvals'
+
+  // ✅ Role-based access check
   useEffect(() => {
-    fetchScholarships()
-  }, [filter])
+    if (!loading) {
+      const role = user?.role || 'viewer'
+      if (!hasAccess(pathname, role)) {
+        router.push('/admin/dashboard')
+      }
+    }
+  }, [user, loading, router])
+
+  useEffect(() => {
+    if (hasAccess(pathname, user?.role || 'viewer')) {
+      fetchScholarships()
+    } else {
+      setLoadingData(false)
+    }
+  }, [filter, user])
 
   const fetchScholarships = async () => {
     try {
-      setLoading(true)
+      setLoadingData(true)
       const response = await fetch(`/api/admin/budget/approvals?status=${filter}`)
       const data = await response.json()
       setScholarships(data.scholarships || [])
@@ -37,7 +59,7 @@ export default function BudgetApprovalsPage() {
       console.error('Error fetching scholarships:', error)
       toast.error('Failed to load budget approvals')
     } finally {
-      setLoading(false)
+      setLoadingData(false)
     }
   }
 
@@ -149,12 +171,49 @@ export default function BudgetApprovalsPage() {
     return styles[status] || 'bg-gray-100 text-gray-700'
   }
 
-  // Filter order: All first, then Pending, Approved, Rejected
   const filterOptions = [
     { value: 'all', label: 'All' },
     { value: 'pending', label: 'Pending' },
     { value: 'approved', label: 'Approved' },
   ]
+
+  // ✅ Show loading while checking auth
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  // ✅ Check access using roleCheck
+  const role = user?.role || 'viewer'
+  if (!hasAccess(pathname, role)) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-4xl mx-auto text-center py-12">
+          <Shield className="w-12 h-12 text-red-400 mx-auto mb-3" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600">You don't have permission to access this page.</p>
+          <button
+            onClick={() => router.push('/admin/dashboard')}
+            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (loadingData) {
+    return (
+      <div className="text-center py-12">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+        <p className="mt-4 text-gray-500">Loading budget approvals...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -185,7 +244,7 @@ export default function BudgetApprovalsPage() {
         </button>
       </div>
 
-      {/* Filter Tabs - All first */}
+      {/* Filter Tabs */}
       <div className="flex gap-2 mb-6 border-b border-gray-200">
         {filterOptions.map((option) => (
           <button
@@ -203,7 +262,7 @@ export default function BudgetApprovalsPage() {
       </div>
 
       {/* Stats Summary */}
-      {!loading && scholarships.length > 0 && (
+      {!loadingData && scholarships.length > 0 && (
         <div className="grid grid-cols-3 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow p-4">
             <div className="flex items-center justify-between">
@@ -239,16 +298,8 @@ export default function BudgetApprovalsPage() {
         </div>
       )}
 
-      {/* Loading */}
-      {loading && (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-500">Loading budget approvals...</p>
-        </div>
-      )}
-
       {/* No Data */}
-      {!loading && scholarships.length === 0 && (
+      {!loadingData && scholarships.length === 0 && (
         <div className="text-center py-12">
           <DollarSign className="w-12 h-12 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">No {filter} budget approvals found</p>
@@ -256,7 +307,7 @@ export default function BudgetApprovalsPage() {
       )}
 
       {/* Scholarship Cards */}
-      {!loading && scholarships.length > 0 && (
+      {!loadingData && scholarships.length > 0 && (
         <div className="space-y-4">
           {scholarships.map((scholarship) => (
             <div key={scholarship.id} className="bg-white rounded-lg shadow p-5">
@@ -319,13 +370,13 @@ export default function BudgetApprovalsPage() {
                       <CheckCircle className="w-4 h-4" />
                       Approve
                     </button>
-<Link
-  href={`/admin/scholarships/${scholarship.id}`}
-  className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
->
-  <Edit className="w-4 h-4" />
-  Adjust
-</Link>
+                    <Link
+                      href={`/admin/scholarships/${scholarship.id}`}
+                      className="flex items-center gap-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                    >
+                      <Edit className="w-4 h-4" />
+                      Adjust
+                    </Link>
                   </>
                 )}
                 <button

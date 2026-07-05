@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Save, Plus, Trash2, Award, Layers, GripVertical } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
+import { useAuth } from '@/app/contexts/AuthContext'; 
+import { createAuditLog } from '@/lib/audit'; 
 
 type CustomField = {
   type: string;
@@ -46,6 +48,8 @@ type FormFieldOption = {
 export default function EditScholarshipPage() {
   const params = useParams();
   const router = useRouter();
+    const { user } = useAuth(); 
+
   const scholarshipId = params.id as string;
 
   const [loading, setLoading] = useState(false);
@@ -469,6 +473,21 @@ const fetchScholarship = async () => {
       if (!response.ok) {
         throw new Error(data.error || 'Failed to update scholarship');
       }
+      // ✅ AUDIT LOG: Scholarship Updated
+await createAuditLog({
+  adminId: user?.id || '',
+  adminName: user?.name || 'Unknown',
+  adminEmail: user?.email || '',
+  adminRole: user?.role || 'reviewer',
+  action: 'UPDATE',
+  entityType: 'SCHOLARSHIP',
+  entityId: parseInt(scholarshipId),
+  entityName: formData.title,
+  changes: `Updated scholarship: ${formData.title} (${formData.scholarship_mode} mode, Budget: Rs. ${totalBudget.toLocaleString()})`,
+  userAgent: navigator.userAgent
+});
+
+toast.success('Scholarship updated successfully!');
 
       toast.success('Scholarship updated successfully!');
       setTimeout(() => {

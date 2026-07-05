@@ -1,5 +1,5 @@
 'use client'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import {
@@ -12,13 +12,14 @@ import {
   FileText,
   Menu,
   X,
+  History,
   Archive,
   Shield,
+  UserPlus,
   HelpCircle,
   LogOut,
   ChevronDown,
   ChevronRight,
-  Calculator,
   DollarSign,
   List,
   AlertCircle
@@ -44,7 +45,8 @@ function hasSubmenu(item: MenuItem | MenuItemWithSubmenu): item is MenuItemWithS
   return 'submenu' in item && Array.isArray((item as any).submenu);
 }
 
-const menuItems: (MenuItem | MenuItemWithSubmenu)[] = [
+// Base menu items (without Admin Management)
+const baseMenuItems: (MenuItem | MenuItemWithSubmenu)[] = [
   { name: 'Dashboard', href: '/admin/dashboard', icon: LayoutDashboard },
   { 
     name: 'Students', 
@@ -73,34 +75,47 @@ const menuItems: (MenuItem | MenuItemWithSubmenu)[] = [
     ]
   },
   { 
-  name: 'Budget Management', 
-  icon: DollarSign,
-  submenu: [
-    { name: 'Approvals', href: '/admin/budget/approvals', icon: DollarSign },
-    { name: 'Overview', href: '/admin/budget/overview', icon: BarChart3 },
-    { name: 'Reports', href: '/admin/budget/reports', icon: FileText }, 
-  ]
-},
+    name: 'Budget Management', 
+    icon: DollarSign,
+    submenu: [
+      { name: 'Approvals', href: '/admin/budget/approvals', icon: DollarSign },
+      { name: 'Overview', href: '/admin/budget/overview', icon: BarChart3 },
+      { name: 'Reports', href: '/admin/budget/reports', icon: FileText }, 
+    ]
+  },
   { name: 'Notifications', href: '/admin/notifications', icon: Bell },
+  
   { name: 'Reports', href: '/admin/reports', icon: FileText },
   { name: 'Manage Disputes', href: '/admin/disputes', icon: AlertCircle },  
   { 
-  name: 'Help Center', 
-  icon: HelpCircle,
-  submenu: [
-    { name: 'FAQs', href: '/admin/help/faqs', icon: HelpCircle },
-    { name: 'Guidelines', href: '/admin/help/guidelines', icon: FileText },
-    { name: 'Policies', href: '/admin/help/policies', icon: Shield },
-  ]
-},
+    name: 'Help Center', 
+    icon: HelpCircle,
+    submenu: [
+      { name: 'FAQs', href: '/admin/help/faqs', icon: HelpCircle },
+      { name: 'Guidelines', href: '/admin/help/guidelines', icon: FileText },
+      { name: 'Policies', href: '/admin/help/policies', icon: Shield },
+    ]
+  },
 ]
+
+// Admin Management menu item (only for Super Admin)
+const adminManagementMenu: MenuItemWithSubmenu = {
+  name: 'Admin Management', 
+  icon: Shield,
+  submenu: [
+    { name: 'All Admins', href: '/admin/admins', icon: Users },
+    { name: 'Add Admin', href: '/admin/admins/create', icon: UserPlus },
+        { name: 'Audit Logs', href: '/admin/audit', icon: History }, 
+
+  ]
+};
 
 export function AdminSidebar() {
   const pathname = usePathname()
   const router = useRouter()
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [openDropdown, setOpenDropdown] = useState<string | null>(null)
-  const { logout } = useAuth()
+  const { logout, user, loading } = useAuth()
 
   const handleSignOut = () => {
     logout();
@@ -113,6 +128,67 @@ export function AdminSidebar() {
     setOpenDropdown(openDropdown === menuName ? null : menuName)
   }
 
+  // Get admin data from localStorage
+  const getAdminData = () => {
+    const adminData = localStorage.getItem('admin');
+    if (adminData) {
+      try {
+        return JSON.parse(adminData);
+      } catch (e) {
+        return null;
+      }
+    }
+    return null;
+  }
+
+  const adminFromStorage = getAdminData();
+  
+  // Check user role
+  const userRole = user?.role || adminFromStorage?.role || 'viewer';
+  
+  // Super Admin check
+  const isSuperAdmin = user?.role === 'super_admin' || 
+                        user?.email === 'admin@comsats.edu.pk' ||
+                        adminFromStorage?.role === 'super_admin' ||
+                        adminFromStorage?.email === 'admin@comsats.edu.pk';
+
+  // ✅ Role-based menu visibility
+  const shouldShowMenu = (menuName: string) => {
+    // Super Admin sees everything
+    if (isSuperAdmin) return true;
+    
+    // Reviewer: No Admin Management, Budget Management, Notifications, Settings
+    if (userRole === 'reviewer') {
+      const hiddenMenus = ['Admin Management', 'Budget Management', 'Settings'];
+      return !hiddenMenus.includes(menuName);
+    }
+    
+    // Viewer: Only view-only menus
+    if (userRole === 'viewer') {
+      const allowedMenus = ['Dashboard', 'Students', 'Scholarships', 'Applications', 'Merit Lists', 'Reports', 'Manage Disputes', 'Help Center'];
+      return allowedMenus.includes(menuName);
+    }
+    
+    return true;
+  };
+
+  // Build menu items based on role
+  let menuItems = [...baseMenuItems];
+  
+  // Filter based on role
+  menuItems = menuItems.filter(item => shouldShowMenu(item.name));
+  
+  // Add Admin Management only for Super Admin
+  if (isSuperAdmin) {
+    menuItems.push(adminManagementMenu);
+  }
+
+  // Force re-render when user changes
+  const [key, setKey] = useState(0);
+  useEffect(() => {
+    setKey(prev => prev + 1);
+  }, [user?.role, user?.email]);
+
   return (
     <>
       {/* Mobile Menu Button */}
@@ -124,7 +200,7 @@ export function AdminSidebar() {
       </button>
 
       {/* Fixed Sidebar */}
-      <div className={cn(
+      <div key={key} className={cn(
         "fixed inset-y-0 left-0 z-40 w-80 bg-gradient-to-b from-blue-900 to-blue-800 text-white flex flex-col transform transition-transform duration-300 ease-in-out h-screen",
         isMobileOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
       )}>
@@ -146,14 +222,13 @@ export function AdminSidebar() {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-4 py-6 space-y-2">
+        <nav className="flex-1 px-4 py-4 space-y-1">
           {menuItems.map((item) => {
             const Icon = item.icon
             
             if (hasSubmenu(item)) {
               return (
                 <div key={item.name}>
-                  {/* Dropdown button - FIXED */}
                   <button
                     onClick={() => toggleDropdown(item.name)}
                     className={cn(
@@ -177,7 +252,6 @@ export function AdminSidebar() {
                     )}
                   </button>
                   
-                  {/* Dropdown Submenu */}
                   {openDropdown === item.name && (
                     <div className="ml-8 mt-1 space-y-1">
                       {item.submenu.map((subItem) => {
@@ -213,7 +287,6 @@ export function AdminSidebar() {
               )
             }
 
-            // Regular menu item (no submenu)
             const isActive = pathname === item.href
             return (
               <Link
@@ -242,20 +315,22 @@ export function AdminSidebar() {
 
         {/* Footer Actions */}
         <div className="p-4 border-t border-blue-700 space-y-2 shrink-0">
-          {/* Settings */}
-          <Link
-            href="/admin/settings"
-            className={cn(
-              "flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 hover:scale-[1.02]",
-              pathname === '/admin/settings'
-                ? "bg-white/20 text-white border border-white/30"
-                : "text-blue-100 hover:bg-white/10 hover:text-white"
-            )}
-            onClick={() => setIsMobileOpen(false)}
-          >
-            <Settings className="w-5 h-5" />
-            <span>Settings</span>
-          </Link>
+          {/* Settings - Only for Super Admin */}
+          {isSuperAdmin && (
+            <Link
+              href="/admin/settings"
+              className={cn(
+                "flex items-center gap-3 px-4 py-3 text-sm font-medium rounded-xl transition-all duration-200 hover:scale-[1.02]",
+                pathname === '/admin/settings'
+                  ? "bg-white/20 text-white border border-white/30"
+                  : "text-blue-100 hover:bg-white/10 hover:text-white"
+              )}
+              onClick={() => setIsMobileOpen(false)}
+            >
+              <Settings className="w-5 h-5" />
+              <span>Settings</span>
+            </Link>
+          )}
 
           {/* Logout */}
           <button 

@@ -16,29 +16,22 @@ export function AdminHeader() {
     router.push('/admin/login')
   }
 
-  // For admin, we don't have an ID in the user object
-  // So we need to get it from localStorage
- // Get admin ID from localStorage
-const getAdminId = () => {
-  return localStorage.getItem('adminId') || '97bca663-9121-48c4-82c7-b76a03c25ec6';
-  
-};
+  const getAdminId = () => {
+    return localStorage.getItem('adminId') || '97bca663-9121-48c4-82c7-b76a03c25ec6';
+  };
 
   return (
     <header className="w-full bg-white/90 backdrop-blur-md border-b border-gray-200/80 px-6 py-4">
       <div className="flex items-center justify-end">
-        
-        {/* Right Section */}
+
         <div className="flex items-center gap-4">
-          
-          {/* Notifications - Use the admin ID */}
+
           <div className="flex items-center gap-4">
             <NotificationBell userId={getAdminId()} userType="admin" />
           </div>
 
-          {/* User Profile with Dropdown */}
           <div className="relative">
-            <button 
+            <button
               onClick={() => setShowUserMenu(!showUserMenu)}
               className="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 transition-all duration-200 border border-transparent hover:border-gray-200"
             >
@@ -50,33 +43,32 @@ const getAdminId = () => {
                   {user?.name || 'Administrator'}
                 </p>
                 <p className="text-xs text-gray-500">
-                  Admin
+                  {user?.role === 'super_admin' ? 'Super Admin' : 'Admin'}
                 </p>
               </div>
             </button>
 
-            {/* User Dropdown Menu */}
             {showUserMenu && (
               <div className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-lg border border-gray-200 py-2 z-50 backdrop-blur-sm">
                 <div className="px-4 py-3 border-b border-gray-100 bg-blue-50/50 rounded-t-xl">
                   <p className="text-sm font-semibold text-gray-900">
                     {user?.name || 'Administrator'}
                   </p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    {user?.email || 'admin@scholarship.edu'}
+                  <p className="text-xs text-gray-400 mt-1">
+                    {user?.role === 'super_admin' ? 'Super Admin' : 'Admin'}
                   </p>
                 </div>
-                
+
                 <div className="py-1">
-<Link
-  href="/admin/settings"
-  className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
->
-  <Settings className="w-4 h-4" />
-  Account Settings
-</Link>
-                  
-                  <button 
+                  <Link
+                    href="/admin/settings"
+                    className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 transition-colors duration-200"
+                  >
+                    <Settings className="w-4 h-4" />
+                    Account Settings
+                  </Link>
+
+                  <button
                     onClick={handleSignOut}
                     className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors duration-200 rounded-b-xl"
                   >

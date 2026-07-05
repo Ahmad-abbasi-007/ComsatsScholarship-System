@@ -9,26 +9,47 @@ import {
     Award,
     Users,
     RefreshCw,
-    Eye
+    Eye,
+    Shield
 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/app/contexts/AuthContext'
+import { hasAccess } from '@/lib/roleCheck'
 import toast, { Toaster } from 'react-hot-toast'
 
 export default function BudgetOverviewPage() {
-    const [loading, setLoading] = useState(true)
+    const { user, loading } = useAuth()
+    const router = useRouter()
+    const [loadingData, setLoadingData] = useState(true)
     const [stats, setStats] = useState<any>(null)
     const [scholarships, setScholarships] = useState<any[]>([])
     const [selectedScholarship, setSelectedScholarship] = useState<any>(null)
     const [showDetailsModal, setShowDetailsModal] = useState(false)
 
+    const pathname = '/admin/budget/overview'
+
+    // ✅ Role-based access check
+    useEffect(() => {
+        if (!loading) {
+            const role = user?.role || 'viewer'
+            if (!hasAccess(pathname, role)) {
+                router.push('/admin/dashboard')
+            }
+        }
+    }, [user, loading, router])
 
     useEffect(() => {
-        fetchBudgetData()
-    }, [])
+        if (hasAccess(pathname, user?.role || 'viewer')) {
+            fetchBudgetData()
+        } else {
+            setLoadingData(false)
+        }
+    }, [user])
 
     const fetchBudgetData = async () => {
         try {
-            setLoading(true)
+            setLoadingData(true)
             const response = await fetch('/api/admin/budget/overview')
             const data = await response.json()
             setStats(data.stats)
@@ -37,7 +58,7 @@ export default function BudgetOverviewPage() {
             console.error('Error fetching budget data:', error)
             toast.error('Failed to load budget data')
         } finally {
-            setLoading(false)
+            setLoadingData(false)
         }
     }
 
@@ -54,6 +75,44 @@ export default function BudgetOverviewPage() {
             adjusted: 'bg-blue-100 text-blue-700'
         }
         return styles[status] || 'bg-gray-100 text-gray-700'
+    }
+
+    // ✅ Show loading while checking auth
+    if (loading) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+            </div>
+        )
+    }
+
+    // ✅ Check access using roleCheck
+    const role = user?.role || 'viewer'
+    if (!hasAccess(pathname, role)) {
+        return (
+            <div className="min-h-screen bg-gray-50 p-6">
+                <div className="max-w-4xl mx-auto text-center py-12">
+                    <Shield className="w-12 h-12 text-red-400 mx-auto mb-3" />
+                    <h2 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h2>
+                    <p className="text-gray-600">You don't have permission to access this page.</p>
+                    <button
+                        onClick={() => router.push('/admin/dashboard')}
+                        className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+                    >
+                        Go to Dashboard
+                    </button>
+                </div>
+            </div>
+        )
+    }
+
+    if (loadingData) {
+        return (
+            <div className="text-center py-12">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+                <p className="mt-4 text-gray-500">Loading budget data...</p>
+            </div>
+        )
     }
 
     return (
@@ -75,16 +134,8 @@ export default function BudgetOverviewPage() {
                 </button>
             </div>
 
-            {/* Loading */}
-            {loading && (
-                <div className="text-center py-12">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-                    <p className="mt-4 text-gray-500">Loading budget data...</p>
-                </div>
-            )}
-
             {/* Stats Cards */}
-            {!loading && stats && (
+            {stats && (
                 <>
                     <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
                         <div className="bg-white rounded-lg shadow p-4">
@@ -201,7 +252,6 @@ export default function BudgetOverviewPage() {
                                     </thead>
                                     <tbody className="bg-white divide-y divide-gray-200">
                                         {scholarships.map((sch: any) => {
-                                            // ✅ FIX: Calculate percentage based on approved/required
                                             const displayRequired = sch.budget_required || 0
                                             const displayApproved = sch.budget_allocated || 0
                                             const percentage = sch.budget_status === 'approved' && displayRequired > 0
@@ -262,79 +312,80 @@ export default function BudgetOverviewPage() {
                     </div>
                 </>
             )}
+
             {/* View Details Modal */}
-{showDetailsModal && selectedScholarship && (
-  <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-    <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-xl font-bold text-gray-900">Budget Details</h2>
-        <button
-          onClick={() => setShowDetailsModal(false)}
-          className="text-gray-400 hover:text-gray-600 text-2xl"
-        >
-          ×
-        </button>
-      </div>
+            {showDetailsModal && selectedScholarship && (
+                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto p-6">
+                        <div className="flex justify-between items-center mb-4">
+                            <h2 className="text-xl font-bold text-gray-900">Budget Details</h2>
+                            <button
+                                onClick={() => setShowDetailsModal(false)}
+                                className="text-gray-400 hover:text-gray-600 text-2xl"
+                            >
+                                ×
+                            </button>
+                        </div>
 
-      <div className="space-y-4">
-        <div>
-          <h3 className="text-lg font-semibold">{selectedScholarship.title}</h3>
-          <p className="text-sm text-gray-500">
-            {selectedScholarship.scholarship_mode === 'tiered' ? 'Tiered' : 'Single'} Mode
-          </p>
-        </div>
+                        <div className="space-y-4">
+                            <div>
+                                <h3 className="text-lg font-semibold">{selectedScholarship.title}</h3>
+                                <p className="text-sm text-gray-500">
+                                    {selectedScholarship.scholarship_mode === 'tiered' ? 'Tiered' : 'Single'} Mode
+                                </p>
+                            </div>
 
-        <div className="grid grid-cols-2 gap-4">
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <p className="text-xs text-gray-500">Status</p>
-            <span className={`px-2 py-1 rounded-full text-xs font-medium inline-block mt-1 ${getStatusBadge(selectedScholarship.budget_status)}`}>
-              {selectedScholarship.budget_status || 'pending'}
-            </span>
-          </div>
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <p className="text-xs text-gray-500">Total Required</p>
-            <p className="text-lg font-bold text-blue-600">
-              Rs. {selectedScholarship.budget_required?.toLocaleString() || 0}
-            </p>
-          </div>
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <p className="text-xs text-gray-500">Approved Budget</p>
-            <p className="text-lg font-bold text-green-600">
-              Rs. {selectedScholarship.budget_allocated?.toLocaleString() || 0}
-            </p>
-          </div>
-          <div className="bg-gray-50 p-3 rounded-lg">
-            <p className="text-xs text-gray-500">Selected Students</p>
-            <p className="text-lg font-bold">{selectedScholarship.selected_count || 0}</p>
-          </div>
-        </div>
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="bg-gray-50 p-3 rounded-lg">
+                                    <p className="text-xs text-gray-500">Status</p>
+                                    <span className={`px-2 py-1 rounded-full text-xs font-medium inline-block mt-1 ${getStatusBadge(selectedScholarship.budget_status)}`}>
+                                        {selectedScholarship.budget_status || 'pending'}
+                                    </span>
+                                </div>
+                                <div className="bg-gray-50 p-3 rounded-lg">
+                                    <p className="text-xs text-gray-500">Total Required</p>
+                                    <p className="text-lg font-bold text-blue-600">
+                                        Rs. {selectedScholarship.budget_required?.toLocaleString() || 0}
+                                    </p>
+                                </div>
+                                <div className="bg-gray-50 p-3 rounded-lg">
+                                    <p className="text-xs text-gray-500">Approved Budget</p>
+                                    <p className="text-lg font-bold text-green-600">
+                                        Rs. {selectedScholarship.budget_allocated?.toLocaleString() || 0}
+                                    </p>
+                                </div>
+                                <div className="bg-gray-50 p-3 rounded-lg">
+                                    <p className="text-xs text-gray-500">Selected Students</p>
+                                    <p className="text-lg font-bold">{selectedScholarship.selected_count || 0}</p>
+                                </div>
+                            </div>
 
-        {selectedScholarship.scholarship_mode === 'tiered' && selectedScholarship.tiers && selectedScholarship.tiers.length > 0 && (
-          <div>
-            <p className="font-medium text-gray-700 mb-2">Tier Breakdown</p>
-            <div className="space-y-2">
-              {selectedScholarship.tiers.map((tier: any) => (
-                <div key={tier.id} className="flex justify-between bg-gray-50 p-2 rounded">
-                  <span>{tier.tier_name}</span>
-                  <span>{tier.count || 0} students × Rs. {tier.award_amount_numeric?.toLocaleString() || 0}</span>
+                            {selectedScholarship.scholarship_mode === 'tiered' && selectedScholarship.tiers && selectedScholarship.tiers.length > 0 && (
+                                <div>
+                                    <p className="font-medium text-gray-700 mb-2">Tier Breakdown</p>
+                                    <div className="space-y-2">
+                                        {selectedScholarship.tiers.map((tier: any) => (
+                                            <div key={tier.id} className="flex justify-between bg-gray-50 p-2 rounded">
+                                                <span>{tier.tier_name}</span>
+                                                <span>{tier.count || 0} students × Rs. {tier.award_amount_numeric?.toLocaleString() || 0}</span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        <div className="mt-6 pt-4 border-t flex justify-end gap-3">
+                            <button
+                                onClick={() => setShowDetailsModal(false)}
+                                className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
                 </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      <div className="mt-6 pt-4 border-t flex justify-end gap-3">
-        <button
-          onClick={() => setShowDetailsModal(false)}
-          className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200"
-        >
-          Close
-        </button>
-      </div>
-    </div>
-  </div>
-)}
+            )}
         </div>
     )
 }

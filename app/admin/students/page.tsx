@@ -3,6 +3,8 @@ import { useState, useEffect } from 'react'
 import toast, { Toaster } from 'react-hot-toast'
 import { StudentTable } from '@/components/admin/students/StudentTable'
 import { StudentFilters } from '@/components/admin/students/StudentFilters'
+import { useAuth } from '@/app/contexts/AuthContext' // ✅ ADD THIS
+import { createAuditLog } from '@/lib/audit' // ✅ ADD THIS
 
 interface Student {
   id: string
@@ -19,6 +21,7 @@ interface Student {
 }
 
 export default function StudentsPage() {
+  const { user } = useAuth() // ✅ ADD THIS
   const [students, setStudents] = useState<Student[]>([])
   const [filteredStudents, setFilteredStudents] = useState<Student[]>([])
   const [loading, setLoading] = useState(true)
@@ -102,6 +105,21 @@ export default function StudentsPage() {
       })
 
       if (response.ok) {
+        // ✅ AUDIT LOG: Student Deactivated
+        await createAuditLog({
+          adminId: user?.id || '',
+          adminName: user?.name || 'Unknown',
+          adminEmail: user?.email || '',
+          adminRole: user?.role || 'reviewer',
+          action: 'DEACTIVATE',
+          entityType: 'STUDENT',
+          entityId: parseInt(student.id),
+          entityName: student.name,
+          changes: `Deactivated student: ${student.name} (${student.regno})`,
+          // ipAddress: '0.0.0.0',
+          userAgent: navigator.userAgent
+        })
+
         toast.dismiss()
         toast.success(`${student.name} deactivated`, {
           duration: 3000,
@@ -181,6 +199,20 @@ export default function StudentsPage() {
       })
 
       if (response.ok) {
+        // ✅ AUDIT LOG: Student Activated
+await createAuditLog({
+  adminId: user?.id || '',
+  adminName: user?.name || 'Unknown',
+  adminEmail: user?.email || '',
+  adminRole: user?.role || 'reviewer',
+  action: 'DEACTIVATE',
+  entityType: 'STUDENT',
+  entityId: parseInt(student.id),
+  entityName: student.name,
+  changes: `Deactivated student: ${student.name} (${student.regno})`,
+  userAgent: navigator.userAgent
+})
+
         toast.dismiss()
         toast.success(`${student.name} activated`, {
           duration: 3000,
@@ -259,6 +291,21 @@ export default function StudentsPage() {
       })
 
       if (response.ok) {
+        // ✅ AUDIT LOG: Student Deleted
+        await createAuditLog({
+          adminId: user?.id || '',
+          adminName: user?.name || 'Unknown',
+          adminEmail: user?.email || '',
+          adminRole: user?.role || 'reviewer',
+          action: 'DELETE',
+          entityType: 'STUDENT',
+          entityId: parseInt(student.id),
+          entityName: student.name,
+          changes: `Deleted student: ${student.name} (${student.regno})`,
+          // ipAddress: '0.0.0.0',
+          userAgent: navigator.userAgent
+        })
+
         toast.dismiss()
         toast.success(`${student.name} deleted`, {
           duration: 4000,
@@ -312,6 +359,21 @@ export default function StudentsPage() {
       })
 
       if (response.ok) {
+        // ✅ AUDIT LOG: Student Updated
+        await createAuditLog({
+          adminId: user?.id || '',
+          adminName: user?.name || 'Unknown',
+          adminEmail: user?.email || '',
+          adminRole: user?.role || 'reviewer',
+          action: 'UPDATE',
+          entityType: 'STUDENT',
+          entityId: parseInt(editingStudent.id),
+          entityName: editingStudent.name,
+          changes: `Updated student: ${editingStudent.name} (${editingStudent.regno})`,
+          // ipAddress: '0.0.0.0',
+          userAgent: navigator.userAgent
+        })
+
         toast.dismiss()
         toast.success('Student updated', {
           duration: 3000,

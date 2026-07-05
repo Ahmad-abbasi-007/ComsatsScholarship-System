@@ -12,26 +12,48 @@ import {
   FileText,
   Printer,
   BarChart3,
-  Eye
+  Eye,
+  Shield
 } from 'lucide-react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import { useAuth } from '@/app/contexts/AuthContext'
+import { hasAccess } from '@/lib/roleCheck'
 import toast, { Toaster } from 'react-hot-toast'
 import * as XLSX from 'xlsx'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
 export default function BudgetReportsPage() {
-  const [loading, setLoading] = useState(true)
+  const { user, loading } = useAuth()
+  const router = useRouter()
+  const [loadingData, setLoadingData] = useState(true)
   const [data, setData] = useState<any>(null)
   const [reportType, setReportType] = useState('overview')
 
+  const pathname = '/admin/budget/reports'
+
+  // ✅ Role-based access check
   useEffect(() => {
-    fetchReportData()
-  }, [reportType])
+    if (!loading) {
+      const role = user?.role || 'viewer'
+      if (!hasAccess(pathname, role)) {
+        router.push('/admin/dashboard')
+      }
+    }
+  }, [user, loading, router])
+
+  useEffect(() => {
+    if (hasAccess(pathname, user?.role || 'viewer')) {
+      fetchReportData()
+    } else {
+      setLoadingData(false)
+    }
+  }, [reportType, user])
 
   const fetchReportData = async () => {
     try {
-      setLoading(true)
+      setLoadingData(true)
       const response = await fetch(`/api/admin/budget/reports?type=${reportType}`)
       const result = await response.json()
       setData(result)
@@ -39,7 +61,7 @@ export default function BudgetReportsPage() {
       console.error('Error fetching report:', error)
       toast.error('Failed to load report data')
     } finally {
-      setLoading(false)
+      setLoadingData(false)
     }
   }
 
@@ -317,9 +339,38 @@ export default function BudgetReportsPage() {
     }
   }
 
+  // ✅ Show loading while checking auth
   if (loading) {
     return (
-      <div className="p-6 text-center py-12">
+      <div className="min-h-screen bg-gray-50 p-6 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
+  }
+
+  // ✅ Check access using roleCheck
+  const role = user?.role || 'viewer'
+  if (!hasAccess(pathname, role)) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-4xl mx-auto text-center py-12">
+          <Shield className="w-12 h-12 text-red-400 mx-auto mb-3" />
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Access Denied</h2>
+          <p className="text-gray-600">You don't have permission to access this page.</p>
+          <button
+            onClick={() => router.push('/admin/dashboard')}
+            className="mt-4 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Go to Dashboard
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  if (loadingData) {
+    return (
+      <div className="text-center py-12">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
         <p className="mt-4 text-gray-500">Loading report...</p>
       </div>

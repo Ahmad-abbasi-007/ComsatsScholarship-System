@@ -26,31 +26,51 @@ export async function createNotification({
     console.log('🔔 [NOTIFICATION] ===== START =====');
     console.log('🔔 [NOTIFICATION] Input:', { userId, userType, type, title });
     
-    // Handle "all-admins" special case
+    // ✅ NEW: Handle "all-admins" - send to ALL Super Admins AND Reviewers
     if (userId === 'all-admins') {
-      console.log('🔔 [NOTIFICATION] Creating notification for admin: 97bca663-9121-48c4-82c7-b76a03c25ec6');
+      console.log('🔔 [NOTIFICATION] Sending to ALL Super Admins and Reviewers');
       
-      // Direct insert for admin - no need to fetch
-      const { data: insertedData, error } = await supabase
+      // Fetch ALL Super Admins and Reviewers
+      const { data: admins, error: fetchError } = await supabase
+        .from('admins')
+        .select('id')
+        .in('role', ['super_admin', 'reviewer']);
+
+      if (fetchError) {
+        console.error('❌ [NOTIFICATION] Error fetching admins:', fetchError);
+        return { success: false, error: fetchError };
+      }
+
+      if (!admins || admins.length === 0) {
+        console.warn('⚠️ [NOTIFICATION] No admins found to notify');
+        return { success: false, error: 'No admins found' };
+      }
+
+      console.log(`📋 [NOTIFICATION] Found ${admins.length} admins to notify`);
+
+      // Create notifications for ALL admins
+      const notifications = admins.map(admin => ({
+        user_id: admin.id,
+        user_type: 'admin',
+        type,
+        title,
+        message,
+        data,
+        is_read: false,
+        created_at: new Date().toISOString()
+      }));
+
+      const { data: insertedData, error: insertError } = await supabase
         .from('notifications')
-        .insert([{
-          user_id: '97bca663-9121-48c4-82c7-b76a03c25ec6', // Your admin ID
-          user_type: 'admin',
-          type,
-          title,
-          message,
-          data,
-          is_read: false,
-          created_at: new Date().toISOString()
-        }])
+        .insert(notifications)
         .select();
 
-      if (error) {
-        console.error('❌ [NOTIFICATION] Insert error:', error);
-        return { success: false, error };
+      if (insertError) {
+        console.error('❌ [NOTIFICATION] Insert error:', insertError);
+        return { success: false, error: insertError };
       }
       
-      console.log('✅ [NOTIFICATION] Admin notification created:', insertedData);
+      console.log(`✅ [NOTIFICATION] ${insertedData?.length || 0} admin notifications created`);
       console.log('🔔 [NOTIFICATION] ===== END =====');
       return { success: true, data: insertedData };
     }

@@ -4,7 +4,7 @@ frontend:
     preBuild:
       commands:
         - cd frontend
-        - npm ci --cache .npm --prefer-offline
+        - npm ci
     build:
       commands:
         - cd frontend
@@ -15,5 +15,4 @@ frontend:
       - '**/*'
   cache:
     paths:
-      - frontend/.next/cache/**/*
-      - frontend/.npm/**/*
+      - frontend/node_modules/**/*

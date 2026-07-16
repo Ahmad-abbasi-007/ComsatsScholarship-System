@@ -424,7 +424,75 @@ export default function AdminSettingsPage() {
               </button>
             </div>
           </div>
-
+          {/* Send Announcement Card */}
+          <div className="bg-white rounded-xl shadow-sm border border-amber-200 p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Megaphone className="w-5 h-5 text-amber-600" />
+              <h2 className="text-lg font-semibold text-gray-900">Send Announcement</h2>
+              <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">All Students</span>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">Send a notification to all registered students</p>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input
+                  type="text"
+                  value={announcementTitle}
+                  onChange={(e) => setAnnouncementTitle(e.target.value)}
+                  placeholder="e.g., Scholarship Deadline Reminder"
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Message</label>
+                <textarea
+                  value={announcementMessage}
+                  onChange={(e) => setAnnouncementMessage(e.target.value)}
+                  placeholder="Enter your announcement message here..."
+                  rows={4}
+                  className="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-amber-500 focus:border-transparent"
+                />
+              </div>
+              
+              <button
+                type="button"
+                onClick={sendAnnouncement}
+                disabled={sendingAnnouncement}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#D97706',
+                  color: 'white',
+                  padding: '12px 16px',
+                  borderRadius: '8px',
+                  fontWeight: 'bold',
+                  fontSize: '16px',
+                  border: 'none',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#B45309'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#D97706'}
+              >
+                {sendingAnnouncement ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Sending...
+                  </>
+                ) : (
+                  <>
+                    <Send size={20} />
+                    Send Announcement to All Students
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+          
           {/* System Information Card */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex items-center justify-between mb-4">

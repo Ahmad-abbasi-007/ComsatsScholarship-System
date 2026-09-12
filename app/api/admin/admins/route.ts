@@ -113,9 +113,10 @@ const { data: admin, error: adminError } = await supabase
     const { data: newAdmin, error: insertError } = await supabase
       .from('admins')
       .insert({
+        name: full_name,
+        full_name: full_name,
         email: email.toLowerCase(),
         password_hash: password_hash,
-        full_name: full_name,
         role: role,
         is_active: true,
         created_at: new Date().toISOString()

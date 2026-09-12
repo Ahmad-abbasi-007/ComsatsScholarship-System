@@ -1,4 +1,5 @@
 'use client';
+import { supabase } from '@/lib/supabaseClient';
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { 
@@ -11,12 +12,8 @@ import {
   Clock,
   Filter
 } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+
 
 interface ScholarshipWithStats {
   id: string;

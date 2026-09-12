@@ -1,13 +1,10 @@
 'use client';
+import { supabase } from '@/lib/supabaseClient';
 import { useState, useEffect } from 'react';
 import { StudentProfileForm } from '@/components/student/StudentProfileForm';
 import { StudentProfileView } from '@/components/student/StudentProfileView';
-import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+
 
 export default function ProfilePage() {
   const [profileComplete, setProfileComplete] = useState(false);

@@ -1,4 +1,5 @@
 'use client';
+import { supabase } from '@/lib/supabaseClient';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
@@ -13,12 +14,8 @@ import {
   XCircle,
   Loader2
 } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+
 
 interface MeritList {
   id: string;

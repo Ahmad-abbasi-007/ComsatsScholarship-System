@@ -1,4 +1,5 @@
 'use client';
+import { supabase } from '@/lib/supabaseClient';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import {
@@ -12,14 +13,10 @@ import {
   XCircle,
   Printer
 } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
 import jsPDF from 'jspdf';
 import QRCode from 'qrcode';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+
 
 interface MeritEntry {
   id: string;

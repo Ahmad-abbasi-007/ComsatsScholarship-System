@@ -1,11 +1,8 @@
+import { supabase } from '@/lib/supabaseClient';
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
 import { sendSelectionEmailJS } from '@/lib/emailjs';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+
 
 // Generate verification code for selected students
 function generateVerificationCode(studentRegno: string, rank: number) {

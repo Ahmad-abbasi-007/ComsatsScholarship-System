@@ -1,4 +1,5 @@
 'use client';
+import { supabase } from '@/lib/supabaseClient';
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -16,15 +17,11 @@ import {
   FileText,
   Shield
 } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '@/app/contexts/AuthContext';
 import Link from 'next/link';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+
 
 export default function AdminSettingsPage() {
   const router = useRouter();

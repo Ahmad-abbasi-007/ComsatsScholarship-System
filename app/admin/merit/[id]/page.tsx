@@ -1,4 +1,5 @@
 'use client';
+import { supabase } from '@/lib/supabaseClient';
 import React from 'react';
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
@@ -16,16 +17,11 @@ import {
   Printer
 } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
-import { createClient } from '@supabase/supabase-js';
 // import toast, { Toaster } from 'react-hot-toast';
-// import { createClient } from '@supabase/supabase-js';
-import { useAuth } from '@/app/contexts/AuthContext';
+// import { useAuth } from '@/app/contexts/AuthContext';
 import { createAuditLog } from '@/lib/audit';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+
 
 interface MeritEntry {
   id: string;

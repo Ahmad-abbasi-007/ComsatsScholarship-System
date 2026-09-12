@@ -1,4 +1,5 @@
 'use client';
+import { supabase } from '@/lib/supabaseClient';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
@@ -14,12 +15,8 @@ import {
   ArrowLeft,
   Users
 } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+
 
 interface Notification {
   id: string;

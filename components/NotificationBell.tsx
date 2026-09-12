@@ -1,14 +1,11 @@
 'use client';
+import { supabase } from '@/lib/supabaseClient';
 import { useState, useEffect, useRef } from 'react';
 import { Bell, CheckCheck, Clock, Award, UserCheck, UserX, Mail } from 'lucide-react';
-import { createClient } from '@supabase/supabase-js';
 import { useRouter } from 'next/navigation';
 import toast from 'react-hot-toast';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+
 
 interface Notification {
   id: string;

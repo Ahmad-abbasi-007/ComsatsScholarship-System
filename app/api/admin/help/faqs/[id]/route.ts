@@ -9,7 +9,7 @@ const supabase = createClient(
 // PUT - Update a FAQ
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params

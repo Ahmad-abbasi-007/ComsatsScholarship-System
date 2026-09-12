@@ -1,11 +1,6 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { useState, useEffect, useCallback } from 'react';
+import { supabase } from '@/lib/supabaseClient';
 
 interface StudentProfileViewProps {
   user?: any;
@@ -50,26 +45,7 @@ export function StudentProfileView({ user, profileData }: StudentProfileViewProp
   const [loading, setLoading] = useState(!profileData);
   const [userRegno, setUserRegno] = useState<string | null>(null);
 
-  // Get regno from localStorage and fetch profile
-  useEffect(() => {
-    const regno = localStorage.getItem('studentRegno');
-    console.log('📝 Retrieved regno from localStorage:', regno);
-    setUserRegno(regno);
-    
-    if (regno && !profileData) {
-      fetchProfile(regno);
-    }
-  }, []);
-
-  // Auto-refresh when user changes (logout/login)
-  useEffect(() => {
-    if (userRegno) {
-      console.log('🔄 User regno changed, fetching fresh data...');
-      fetchProfile(userRegno);
-    }
-  }, [userRegno]);
-
-  const fetchProfile = async (regno: string) => {
+  const fetchProfile = useCallback(async (regno: string) => {
     try {
       setLoading(true);
       
@@ -160,7 +136,26 @@ export function StudentProfileView({ user, profileData }: StudentProfileViewProp
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
+
+  // Get regno from localStorage and fetch profile
+  useEffect(() => {
+    const regno = localStorage.getItem('studentRegno');
+    console.log('📝 Retrieved regno from localStorage:', regno);
+    setUserRegno(regno);
+    
+    if (regno && !profileData) {
+      fetchProfile(regno);
+    }
+  }, [profileData, fetchProfile]);
+
+  // Auto-refresh when user changes (logout/login)
+  useEffect(() => {
+    if (userRegno) {
+      console.log('🔄 User regno changed, fetching fresh data...');
+      fetchProfile(userRegno);
+    }
+  }, [userRegno, fetchProfile]);
 
   // Show loading while getting regno
   if (!userRegno && !profileData) {

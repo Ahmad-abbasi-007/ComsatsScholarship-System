@@ -57,3 +57,5 @@ build/
 # System files
 .DS_Store
 *.log
+env.download
+

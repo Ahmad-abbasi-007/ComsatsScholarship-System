@@ -9,7 +9,7 @@ const supabase = createClient(
 // PUT - Update a guideline
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
@@ -57,7 +57,7 @@ export async function PUT(
 // DELETE - Delete a guideline
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params

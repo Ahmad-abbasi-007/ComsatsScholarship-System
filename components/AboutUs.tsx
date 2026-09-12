@@ -7,9 +7,9 @@ import FAQSection from "./FAQSection";
 
 export default function AboutUs() {
   const team = [
-    { name: "Dr. A. Basit", role: "Founder & Director", image: "/images/my-profile.jpeg" },
+    { name: "Dr. A. Basit", role: "Founder & Director", image: "/images/Basit-photo.jpeg" },
     { name: "Ms. Sarah Khan", role: "Scholarship Coordinator", image: "/images/sara-profile.jpg" },
-    { name: "Mr. Ali Raza", role: "Web & Dev Lead", image: "/images/ahmad-profile.jpg" },
+    { name: "Mr. Ahmad Raza", role: "Web & Dev Lead", image: "/images/my-photo.jpeg" },
   ];
 
   const values = [

@@ -131,7 +131,6 @@ export async function POST(request: NextRequest) {
       form_sections: form_sections,
       number_of_awards: scholarship_mode === 'single' ? number_of_awards : 0,
       scholarship_mode: scholarship_mode,
-      created_by: null,
       budget_allocated: budget_allocated,
       budget_required: 0,
       budget_status: budget_status
